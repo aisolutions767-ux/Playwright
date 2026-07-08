@@ -78,4 +78,33 @@ app.post("/render-video", async (req, res) => {
   }
 });
 
+app.get("/api/screenshot", async (req, res) => {
+  const targetUrl = req.query.url;
+
+  if (!targetUrl) {
+    return res.status(400).json({ error: "Please provide a ?url= parameter" });
+  }
+
+  let browser;
+  try {
+    console.log(`[screenshot] Taking photo of: ${targetUrl}`);
+    browser = await chromium.launch({ args: ["--no-sandbox"] });
+    const page = await browser.newPage();
+    
+    await page.goto(targetUrl, { waitUntil: "networkidle", timeout: 60000 });
+    
+    // Take the screenshot as a buffer in memory
+    const imageBuffer = await page.screenshot({ type: "png" });
+
+    res.set("Content-Type", "image/png");
+    res.send(imageBuffer);
+
+  } catch (error) {
+    console.error("[screenshot] Error:", error.message);
+    res.status(500).json({ error: "Screenshot failed" });
+  } finally {
+    if (browser) await browser.close();
+  }
+});
+
 app.listen(3000, () => console.log("Server running"));
